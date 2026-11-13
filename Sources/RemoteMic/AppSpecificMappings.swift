@@ -63,10 +63,15 @@ struct AppSpecificMappings: Codable, Equatable {
     func resolve(bundleIdentifier: String?, button: RemoteButton, trigger: ButtonTrigger) -> ConfiguredButtonAction? {
         guard enabled else { return nil }
         if button == .tv {
-            return trigger == .singleClick
-                ? ConfiguredButtonAction(action: .customShortcut,
+            switch trigger {
+            case .singleClick:
+                return ConfiguredButtonAction(action: .customShortcut,
                     shortcut: .init(keyCode: 48, modifierFlags: [], keyLabel: "Tab"))
-                : ConfiguredButtonAction(action: .disabled, shortcut: nil)
+            case .longPress:
+                return ConfiguredButtonAction(action: .escape, shortcut: nil)
+            case .doubleClick:
+                return ConfiguredButtonAction(action: .disabled, shortcut: nil)
+            }
         }
         guard let target = AppMappingTarget.allCases.first(where: { $0.bundleIdentifier == bundleIdentifier }) else {
             return nil
@@ -83,7 +88,7 @@ struct AppSpecificMappings: Codable, Equatable {
         case .up: action = .scrollUp
         case .down: action = .scrollDown
         case .ok: action = .returnKey
-        case .back: action = .escape
+        case .back: action = .deleteBackward
         case .home: action = target == .codex ? .openCodex : .focusInput
         case .volumeUp: action = .volumeUp
         case .volumeDown: action = .volumeDown

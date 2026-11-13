@@ -39,7 +39,7 @@ struct AppSpecificMappingsTests {
             #expect(mappings.resolve(bundleIdentifier: identifier, button: .tv,
                 trigger: .doubleClick)?.action == .disabled)
             #expect(mappings.resolve(bundleIdentifier: identifier, button: .tv,
-                trigger: .longPress)?.action == .disabled)
+                trigger: .longPress)?.action == .escape)
         }
     }
 
@@ -67,7 +67,7 @@ struct AppSpecificMappingsTests {
             #expect(mappings.resolve(bundleIdentifier: target.bundleIdentifier, button: .ok,
                 trigger: .singleClick)?.action == .returnKey)
             #expect(mappings.resolve(bundleIdentifier: target.bundleIdentifier, button: .back,
-                trigger: .singleClick)?.action == .escape)
+                trigger: .singleClick)?.action == .deleteBackward)
             #expect(mappings.resolve(bundleIdentifier: target.bundleIdentifier, button: .home,
                 trigger: .doubleClick)?.action == .disabled)
         }
@@ -113,7 +113,7 @@ struct AppSpecificMappingsTests {
         let snapshot = settings.interactionSnapshot(for: .tv, opaque: { _ in true })
         #expect(!snapshot.hasOpaqueBinding)
         #expect(!snapshot.recognizesDouble)
-        #expect(!snapshot.recognizesLong)
+        #expect(snapshot.recognizesLong)
         #expect(snapshot.single.shortcut?.keyCode == 48)
     }
 

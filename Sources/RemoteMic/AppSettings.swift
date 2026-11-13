@@ -3295,6 +3295,11 @@ final class AppSettings: ObservableObject {
             repeatInterval: HIDRemoteTiming.repeatIntervalMilliseconds(for: button) ?? 100,
             opaqueDouble: appMappingAction(for: button, trigger: .doubleClick) == nil && opaque(.doubleClick),
             opaqueLong: appMappingAction(for: button, trigger: .longPress) == nil && opaque(.longPress))
+        // App mappings own these gestures at runtime; saved base/profile modes remain intact.
+        if appMappingAction(for: button, trigger: .singleClick) != nil {
+            if button == .back { snapshot.mode = .repeatSingle }
+            if button == .tv { snapshot.mode = .once }
+        }
         if snapshot.mode == .repeatSingle,
            interactionModeOverride?(profileID ?? selectedRemoteProfileID, button) == nil,
            timing.migratedRepeatButtons?.contains(button.rawValue) == true,

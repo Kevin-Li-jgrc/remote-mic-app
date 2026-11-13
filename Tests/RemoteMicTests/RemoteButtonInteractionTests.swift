@@ -15,6 +15,92 @@ struct RemoteButtonInteractionTests {
               long: .init(action: long ? .arrowRight : .disabled, shortcut: nil))
     }
 
+    @Test(arguments: ["com.openai.codex", "com.deepseek.dsh"])
+    func automaticBackspaceRepeatsUntilReleaseWithoutRewritingSavedSettings(_ identifier: String) throws {
+        let name = "AppBackspace.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        settings.customMappingEnabled = true
+        settings.appSpecificMappings.enabled = true
+        settings.frontmostBundleIdentifierProvider = { identifier }
+        settings.setAction(.escape, for: .back)
+        settings.setHoldMode(.once, for: .back)
+        let saved = defaults.persistentDomain(forName: name) as NSDictionary?
+        let config = settings.interactionSnapshot(for: .back)
+        let clock = InteractionClock()
+        let controller = RemoteButtonInteractionController(scheduler: clock)
+        var actions: [ButtonAction] = []
+        var valid = true
+        func edge(_ phase: RemoteButtonPhase) {
+            controller.handle(phase, button: .back, snapshot: config, valid: { valid }) { _, action in
+                actions.append(action.action); return true
+            }
+        }
+        edge(.press)
+        edge(.release)
+        clock.advance(200)
+        #expect(actions == [.deleteBackward])
+        actions.removeAll()
+        edge(.press)
+        clock.advance(900)
+        #expect(actions.count >= 3)
+        #expect(actions.allSatisfy { $0 == .deleteBackward })
+        edge(.release)
+        let count = actions.count
+        clock.advance(1500)
+        #expect(actions.count == count)
+        edge(.press)
+        valid = false
+        clock.advance(2000)
+        let cancelledCount = actions.count
+        clock.advance(2500)
+        #expect(actions.count == cancelledCount)
+        #expect(!controller.isTracking(.back))
+        #expect(defaults.persistentDomain(forName: name) as NSDictionary? == saved)
+        settings.appSpecificMappings.enabled = false
+        #expect(settings.interactionSnapshot(for: .back).single.action == .escape)
+        #expect(settings.interactionSnapshot(for: .back).mode == .once)
+    }
+
+    @Test func automaticTvHoldSendsOnlyOneEscapeAndShortClickStillSendsTab() throws {
+        let name = "AppTvEscape.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        settings.customMappingEnabled = true
+        settings.appSpecificMappings.enabled = true
+        settings.frontmostBundleIdentifierProvider = { "com.openai.codex" }
+        settings.setAction(.escape, for: .tv, trigger: .longPress)
+        settings.setHoldMode(.repeatLong, for: .tv)
+        let saved = defaults.persistentDomain(forName: name) as NSDictionary?
+        let config = settings.interactionSnapshot(for: .tv)
+        let clock = InteractionClock()
+        let controller = RemoteButtonInteractionController(scheduler: clock)
+        var actions: [ConfiguredButtonAction] = []
+        func edge(_ phase: RemoteButtonPhase) {
+            controller.handle(phase, button: .tv, snapshot: config, valid: { true }) { _, action in
+                actions.append(action); return true
+            }
+        }
+        edge(.press)
+        clock.advance(50)
+        edge(.release)
+        clock.advance(200)
+        #expect(actions.count == 1)
+        #expect(actions.first?.shortcut?.keyCode == 48)
+        #expect(actions.first?.shortcut?.modifierFlags.isEmpty == true)
+        actions.removeAll()
+        edge(.press)
+        clock.advance(2500)
+        edge(.release)
+        clock.advance(3000)
+        #expect(actions.map(\.action) == [.escape])
+        #expect(defaults.persistentDomain(forName: name) as NSDictionary? == saved)
+        settings.appSpecificMappings.enabled = false
+        #expect(settings.interactionSnapshot(for: .tv).mode == .repeatLong)
+    }
+
     @Test func doubleWindowStartsAtReleaseAndUsesCapturedTiming() {
         let clock = InteractionClock()
         let controller = RemoteButtonInteractionController(scheduler: clock)

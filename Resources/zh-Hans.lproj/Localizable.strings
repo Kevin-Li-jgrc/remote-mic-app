@@ -1452,7 +1452,7 @@
 "app_mapping.enabled" = "启用 Codex / DeepSeek 自动匹配";
 "app_mapping.description" = "只识别当前前台 App，不读取聊天内容。未匹配的 App 使用基础映射；关闭后完全回到原映射。";
 "app_mapping.current" = "当前生效";
-"app_mapping.tv" = "启用时，TV 单击始终为 Tab；TV 双击和长按不执行动作。";
+"app_mapping.tv" = "启用时，TV 单击为 Tab，长按发送一次 Esc；双击不执行动作。";
 "app_mapping.target" = "编辑应用";
 "app_mapping.deepseek_pending" = "DeepSeek 专属快捷键尚未确认，初始不执行动作。请先用电脑键盘验证，再在这里设置。";
 "app_mapping.unset" = "未设置（不执行）";
@@ -1460,7 +1460,7 @@
 "app_mapping.clear" = "清除";
 "app_mapping.off" = "已关闭";
 "app_mapping.base" = "基础映射";
-"app_mapping.common" = "通用按键：确定 Enter、返回 Esc、上下滚动、音量加减。Codex 主页唤起 Codex；DeepSeek 主页聚焦当前输入框。语音触发保持原设置。";
+"app_mapping.common" = "通用按键：确定 Enter；返回键单击退格，按住连续删除；上下滚动、音量加减。Codex 主页唤起 Codex；DeepSeek 主页聚焦当前输入框。语音触发保持原设置。";
 "app_mapping.slot.previous_chat" = "左键单击 · 上一个会话";
 "app_mapping.slot.next_chat" = "右键单击 · 下一个会话";
 "app_mapping.slot.new_chat" = "主页长按 · 新建会话";
