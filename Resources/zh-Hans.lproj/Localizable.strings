@@ -1466,3 +1466,6 @@
 "app_mapping.slot.new_chat" = "主页长按 · 新建会话";
 "app_mapping.slot.attention" = "菜单单击 · 待处理会话";
 "app_mapping.slot.review" = "菜单长按 · 代码审查";
+
+"action.open_deepseek_harness" = "打开 DeepSeek Harness";
+"app_mapping.switch" = "菜单双击在 Codex 与 DeepSeek 之间切换并聚焦输入框；其他 App 中双击打开 DeepSeek。";

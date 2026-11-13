@@ -101,6 +101,100 @@ struct RemoteButtonInteractionTests {
         #expect(settings.interactionSnapshot(for: .tv).mode == .repeatLong)
     }
 
+    @Test(arguments: ["com.openai.codex", "com.deepseek.dsh", "com.apple.finder"])
+    func automaticMenuDoubleOpensAndFocusesExactlyOneTarget(_ identifier: String) throws {
+        let name = "AppMenuSwitch.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        settings.customMappingEnabled = true
+        settings.frontmostBundleIdentifierProvider = { identifier }
+        settings.setAction(.escape, for: .menu, trigger: .doubleClick)
+        settings.appSpecificMappings.enabled = true
+        let saved = defaults.persistentDomain(forName: name) as NSDictionary?
+        let config = settings.interactionSnapshot(for: .menu)
+        let clock = InteractionClock()
+        let controller = RemoteButtonInteractionController(scheduler: clock)
+        var opened: [String] = []
+        var focused: [String] = []
+        var triggers: [ButtonTrigger] = []
+        let expected = identifier == "com.deepseek.dsh" ? "com.openai.codex" : "com.deepseek.dsh"
+        let url = URL(fileURLWithPath: "/Applications/Example.app")
+        func edge(_ phase: RemoteButtonPhase) {
+            controller.handle(phase, button: .menu, snapshot: config, valid: { true }) { trigger, action in
+                triggers.append(trigger)
+                return KeyboardInjector.send(action.action, shortcut: action.shortcut,
+                    applicationURL: { bundle in
+                        #expect(bundle == expected)
+                        return url
+                    },
+                    applicationOpener: { _, app, completion in
+                        opened.append(app.bundleIdentifier)
+                        completion(4242, nil)
+                    },
+                    applicationFocuser: { actualURL, app, pid, _ in
+                        #expect(actualURL == url)
+                        #expect(pid == 4242)
+                        focused.append(app.bundleIdentifier)
+                    },
+                    frontmostApplication: { (bundleIdentifier: identifier, processIdentifier: 1234) },
+                    accessibilityTrusted: { true }, keyPoster: { _, _ in },
+                    shortcutEventPoster: { _ in true }, shortcutHardwareFlags: { [] })
+            }
+        }
+        edge(.press)
+        clock.advance(50)
+        edge(.release)
+        clock.advance(100)
+        #expect(triggers.isEmpty)
+        edge(.press)
+        clock.advance(150)
+        edge(.release)
+        clock.advance(1200)
+        #expect(triggers == [.doubleClick])
+        #expect(opened == [expected])
+        #expect(focused == [expected])
+        #expect(defaults.persistentDomain(forName: name) as NSDictionary? == saved)
+        settings.appSpecificMappings.enabled = false
+        #expect(settings.configuredAction(for: .menu, trigger: .doubleClick).action == .escape)
+    }
+
+    @Test func automaticMenuSingleAndLongKeepTheirActionsWithoutSwitchingApps() throws {
+        let name = "AppMenuLegacy.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        settings.customMappingEnabled = true
+        settings.appSpecificMappings.enabled = true
+        settings.frontmostBundleIdentifierProvider = { "com.openai.codex" }
+        let config = settings.interactionSnapshot(for: .menu)
+        let clock = InteractionClock()
+        let controller = RemoteButtonInteractionController(scheduler: clock)
+        var actions: [ConfiguredButtonAction] = []
+        func edge(_ phase: RemoteButtonPhase) {
+            controller.handle(phase, button: .menu, snapshot: config, valid: { true }) { _, action in
+                actions.append(action); return true
+            }
+        }
+        edge(.press)
+        clock.advance(50)
+        edge(.release)
+        clock.advance(349)
+        #expect(actions.isEmpty)
+        clock.advance(350)
+        #expect(actions.count == 1)
+        #expect(actions.first?.shortcut?.keyCode == 0)
+        #expect(actions.first?.shortcut?.modifierFlags == [.command, .option])
+        actions.removeAll()
+        edge(.press)
+        clock.advance(1000)
+        edge(.release)
+        clock.advance(2000)
+        #expect(actions.count == 1)
+        #expect(actions.first?.shortcut?.keyCode == 5)
+        #expect(actions.first?.shortcut?.modifierFlags == [.control, .shift])
+    }
+
     @Test func doubleWindowStartsAtReleaseAndUsesCapturedTiming() {
         let clock = InteractionClock()
         let controller = RemoteButtonInteractionController(scheduler: clock)

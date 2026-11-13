@@ -578,4 +578,4 @@
   - 必须先用同一只 RC003 和两台 Mac 验证：分别配对后无需重新配对即可来回重连、当前 Mac 释放后遥控器会重新广播、macOS HID 不会立即抢回连接。通过后可实现“当前 Mac 释放 → 目标 Mac 连接”；任一关键条件失败则纯 App 方案不支持，并在此条目标明硬件限制。
   - 研究结论和真机验收步骤保存在独立的产品资料工作区。
 
-- [ ] Fork：Codex / DeepSeek 前台 App 自动匹配（公开独立实现，TV 单击 Tab、长按 Esc）。核心路由和隔离测试包已实现；返回键单击退格、按住连删。Build 273 的 Codex 主键位已获用户实测，新的返回/TV 手势及 DeepSeek、前后台切换验收待完成；DeepSeek 专属快捷键由用户先验证后设置。见 `Testing/AppSpecificMappings.md`。
+- [ ] Fork：Codex / DeepSeek 前台 App 自动匹配（公开独立实现，TV 单击 Tab、长按 Esc）。核心路由和隔离测试包已实现；返回键单击退格、按住连删。Build 273 的 Codex 主键位、Build 274 的返回/TV 手势已获用户实测；菜单双击切换并聚焦已实现，新构建的 DeepSeek、首次语音和前后台切换验收待完成；DeepSeek 专属快捷键由用户先验证后设置。见 `Testing/AppSpecificMappings.md`。

@@ -1467,3 +1467,6 @@
 "app_mapping.slot.new_chat" = "Home hold · New chat";
 "app_mapping.slot.attention" = "Menu click · Chat needing attention";
 "app_mapping.slot.review" = "Menu hold · Code review";
+
+"action.open_deepseek_harness" = "Open DeepSeek Harness";
+"app_mapping.switch" = "Double-click Menu to switch between Codex and DeepSeek and focus the input. From other apps, it opens DeepSeek.";

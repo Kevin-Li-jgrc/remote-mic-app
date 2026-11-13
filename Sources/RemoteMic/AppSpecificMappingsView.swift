@@ -18,6 +18,8 @@ struct AppSpecificMappingsView: View {
             Text(localization.text("app_mapping.current") + "：" + currentTargetName)
                 .font(.system(size: 13, weight: .medium))
             Text("app_mapping.tv").font(.system(size: 13, weight: .medium))
+            Text("app_mapping.switch").font(.system(size: 13, weight: .medium))
+                .fixedSize(horizontal: false, vertical: true)
             Picker("app_mapping.target", selection: $target) {
                 ForEach(AppMappingTarget.allCases) { item in
                     Text(item.name).tag(item)

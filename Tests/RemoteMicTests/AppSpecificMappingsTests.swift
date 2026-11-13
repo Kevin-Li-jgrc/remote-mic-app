@@ -43,6 +43,23 @@ struct AppSpecificMappingsTests {
         }
     }
 
+    @Test func menuDoubleSelectsTheOtherAppAndOtherAppsStartWithDeepSeek() {
+        var mappings = AppSpecificMappings()
+        mappings.enabled = true
+        for (identifier, expected) in [("com.openai.codex", "com.deepseek.dsh"),
+                                       ("com.deepseek.dsh", "com.openai.codex"),
+                                       ("com.apple.finder", "com.deepseek.dsh")] {
+            let action = mappings.resolve(bundleIdentifier: identifier, button: .menu, trigger: .doubleClick)
+            #expect(action?.action.presetApplication?.bundleIdentifier == expected)
+            #expect(action?.allowsSingleClickRepeat == false)
+        }
+        #expect(mappings.resolve(bundleIdentifier: nil, button: .menu,
+            trigger: .doubleClick)?.action.presetApplication?.bundleIdentifier == "com.deepseek.dsh")
+        mappings.enabled = false
+        #expect(mappings.resolve(bundleIdentifier: "com.openai.codex", button: .menu,
+            trigger: .doubleClick) == nil)
+    }
+
     @Test func deepSeekUnknownShortcutsAreDisabledAndEditable() {
         var mappings = AppSpecificMappings()
         mappings.enabled = true

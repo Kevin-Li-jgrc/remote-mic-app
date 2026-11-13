@@ -213,6 +213,7 @@ struct RemoteButtonsTests {
         #expect(mappings == [
             localization.text("app.name"): "com.hd838a.RemoteMic",
             "Codex": "com.openai.codex",
+            "DeepSeek Harness": "com.deepseek.dsh",
             "WorkBuddy": "com.tencent.workbuddy.mac",
             "Claude": "com.anthropic.claudefordesktop",
             "cmux": "com.cmuxterm.app",
@@ -1982,6 +1983,36 @@ struct RemoteButtonsTests {
         #expect(handled)
         #expect(attemptedApplication == .codex)
         #expect(!focusAttempted)
+    }
+
+    @Test func deepSeekLaunchFocusesOnlyAfterSuccessfulActivation() throws {
+        let action = try #require(ButtonAction(rawValue: "openDeepSeekHarness"))
+        let url = URL(fileURLWithPath: "/Applications/Example.app")
+        for success in [true, false] {
+            var completion: ((pid_t?, Error?) -> Void)?
+            var focusCount = 0
+            let handled = KeyboardInjector.send(action,
+                applicationURL: { bundle in
+                    #expect(bundle == "com.deepseek.dsh"); return url
+                },
+                applicationOpener: { _, _, callback in completion = callback },
+                applicationFocuser: { _, app, pid, _ in
+                    #expect(app.bundleIdentifier == "com.deepseek.dsh")
+                    #expect(app.focusStrategy == .accessibilityComposer)
+                    #expect(pid == 4242)
+                    focusCount += 1
+                }, frontmostApplication: { nil })
+            #expect(handled)
+            #expect(focusCount == 0)
+            let callback = try #require(completion)
+            if success { callback(4242, nil) }
+            else { callback(nil, NSError(domain: "TestLaunch", code: 1)) }
+            #expect(focusCount == (success ? 1 : 0))
+        }
+        var opened = false
+        #expect(KeyboardInjector.send(action, applicationURL: { _ in nil },
+            applicationOpener: { _, _, _ in opened = true }, frontmostApplication: { nil }))
+        #expect(!opened)
     }
 
     @Test func alreadyFrontmostPresetApplicationSkipsReactivationAndFocusesRunningInstance() {

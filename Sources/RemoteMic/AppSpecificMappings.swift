@@ -62,6 +62,12 @@ struct AppSpecificMappings: Codable, Equatable {
 
     func resolve(bundleIdentifier: String?, button: RemoteButton, trigger: ButtonTrigger) -> ConfiguredButtonAction? {
         guard enabled else { return nil }
+        if button == .menu, trigger == .doubleClick {
+            return ConfiguredButtonAction(
+                action: bundleIdentifier == AppMappingTarget.deepSeek.bundleIdentifier
+                    ? .openCodex : .openDeepSeekHarness,
+                shortcut: nil)
+        }
         if button == .tv {
             switch trigger {
             case .singleClick:

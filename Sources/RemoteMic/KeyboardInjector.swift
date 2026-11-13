@@ -476,7 +476,7 @@ enum KeyboardInjector {
             break
         case .toggleLongRecording, .openCommonPhrases:
             break
-        case .openRemoteMic, .openCodex, .openWorkBuddy, .openClaude, .openCmux, .openWeChat, .openCursor, .openXcode,
+        case .openRemoteMic, .openCodex, .openDeepSeekHarness, .openWorkBuddy, .openClaude, .openCmux, .openWeChat, .openCursor, .openXcode,
              .openSlack, .openWeCom, .openNeteaseMusic, .openChrome, .openSafari, .openZed, .openDimAgent:
             break
         }

@@ -724,6 +724,7 @@ enum ApplicationFocusStrategy: Equatable {
 enum PresetApplication: String, CaseIterable, Identifiable {
     case remoteMic
     case codex
+    case deepSeekHarness
     case workBuddy
     case claude
     case cmux
@@ -744,6 +745,7 @@ enum PresetApplication: String, CaseIterable, Identifiable {
         switch self {
         case .remoteMic: return localization.text("app.name")
         case .codex: return "Codex"
+        case .deepSeekHarness: return "DeepSeek Harness"
         case .workBuddy: return "WorkBuddy"
         case .claude: return "Claude"
         case .cmux: return "cmux"
@@ -764,6 +766,7 @@ enum PresetApplication: String, CaseIterable, Identifiable {
         switch self {
         case .remoteMic: return "com.hd838a.RemoteMic"
         case .codex: return "com.openai.codex"
+        case .deepSeekHarness: return "com.deepseek.dsh"
         case .workBuddy: return "com.tencent.workbuddy.mac"
         case .claude: return "com.anthropic.claudefordesktop"
         case .cmux: return "com.cmuxterm.app"
@@ -782,7 +785,7 @@ enum PresetApplication: String, CaseIterable, Identifiable {
 
     var focusStrategy: ApplicationFocusStrategy? {
         switch self {
-        case .codex, .workBuddy, .claude, .dimAgent: return .accessibilityComposer
+        case .codex, .deepSeekHarness, .workBuddy, .claude, .dimAgent: return .accessibilityComposer
         case .cmux: return .cmuxSurfaceAPI
         default: return nil
         }
@@ -905,6 +908,7 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
     case openCommonPhrases
     case openRemoteMic
     case openCodex
+    case openDeepSeekHarness
     case openWorkBuddy
     case openClaude
     case openCmux
@@ -967,6 +971,7 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
         case .toggleLongRecording: return localization.text("action.toggle_long_recording")
         case .openRemoteMic: return localization.text("action.open_remote_mic")
         case .openCodex: return localization.text("action.open_codex")
+        case .openDeepSeekHarness: return localization.text("action.open_deepseek_harness")
         case .openWorkBuddy: return localization.text("action.open_workbuddy")
         case .openClaude: return localization.text("action.open_claude")
         case .openCmux: return localization.text("action.open_cmux")
@@ -1057,6 +1062,7 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .openRemoteMic: return .remoteMic
         case .openCodex: return .codex
+        case .openDeepSeekHarness: return .deepSeekHarness
         case .openWorkBuddy: return .workBuddy
         case .openClaude: return .claude
         case .openCmux: return .cmux
@@ -1097,7 +1103,7 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
             return .commonPhrases
         case .openCustomApplication:
             return .applications
-        case .openRemoteMic, .openCodex, .openWorkBuddy, .openClaude, .openCmux, .openWeChat, .openCursor,
+        case .openRemoteMic, .openCodex, .openDeepSeekHarness, .openWorkBuddy, .openClaude, .openCmux, .openWeChat, .openCursor,
              .openXcode, .openSlack, .openWeCom, .openNeteaseMusic, .openChrome, .openSafari,
              .openZed, .openDimAgent:
             return .applications
