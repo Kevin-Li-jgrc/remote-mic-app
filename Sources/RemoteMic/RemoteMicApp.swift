@@ -120,6 +120,7 @@ final class ButtonProfileImportRequestStore: ObservableObject {
 enum RemoteMicApp {
     @MainActor
     static func main() {
+        TestBuildIsolation.seedDefaults()
         if ProcessInfo.processInfo.arguments.contains("--agent-configure") {
             let arguments = Array(ProcessInfo.processInfo.arguments.dropFirst())
             exit(AgentConfigurationCommand.run(arguments: arguments))

@@ -16,4 +16,18 @@ struct TestBuildIsolationTests {
         #expect(!TestBuildIsolation.preventsConcurrentRun(isolated: true, productionRunning: false))
         #expect(!TestBuildIsolation.preventsConcurrentRun(isolated: false, productionRunning: true))
     }
+    @Test func independentDefaultsKeepTvTabBeforeAndAfterDisablingAutomaticMatching() throws {
+        let name = "TestBuildIsolationTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        TestBuildIsolation.seedDefaults(in: defaults, isolated: true)
+        let settings = AppSettings(defaults: defaults)
+        #expect(!settings.customMappingEnabled)
+        #expect(settings.appSpecificMappings.enabled)
+        #expect(settings.configuredBaseAction(for: .tv, trigger: .singleClick).shortcut?.keyCode == 48)
+        #expect(settings.configuredBaseAction(for: .tv, trigger: .singleClick).shortcut?.modifierFlags.isEmpty == true)
+        settings.appSpecificMappings.enabled = false
+        #expect(settings.configuredAction(for: .tv, trigger: .singleClick).shortcut?.keyCode == 48)
+    }
+
 }
