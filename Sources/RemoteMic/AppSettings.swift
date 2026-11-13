@@ -380,6 +380,20 @@ final class AppSettings: ObservableObject {
         longestVoice: voiceSessionRanking.map(\.duration).max() ?? 0)
     var configurationDefaults: UserDefaults { defaults }
 
+    @Published var appSpecificMappings: AppSpecificMappings {
+        didSet {
+            if let data = try? JSONEncoder().encode(appSpecificMappings) {
+                defaults.set(data, forKey: "appSpecificMappings.v1")
+            }
+            if appSpecificMappings != oldValue {
+                onInteractionModeChanged?(selectedRemoteProfileID)
+                AppLogger.shared.write("APP MAPPING phase=completed result=settings_saved enabled=\(appSpecificMappings.enabled)")
+            }
+        }
+    }
+    var frontmostBundleIdentifierProvider: () -> String? = { nil }
+
+
     /// 用户唯一的音量：0% 静音，100% 原始音量，1000% 约等于 +20 dB。
     @Published var outputVolumePercent: Double {
         didSet {
@@ -915,6 +929,8 @@ final class AppSettings: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         var corruptedKeys: [String] = []
         self.defaults = defaults
+        appSpecificMappings = defaults.data(forKey: "appSpecificMappings.v1")
+            .flatMap { try? JSONDecoder().decode(AppSpecificMappings.self, from: $0) } ?? AppSpecificMappings()
         Self.restoreInterruptedOnboardingTrial(in: defaults)
         remoteDeviceProfiles = []
         selectedRemoteProfileID = nil
@@ -1699,13 +1715,20 @@ final class AppSettings: ObservableObject {
         return profile.mappings.parsedSecondaryButtonBindings[button]?[trigger] ?? .disabled
     }
 
+    func appMappingAction(for button: RemoteButton, trigger: ButtonTrigger) -> ConfiguredButtonAction? {
+        guard customMappingEnabled else { return nil }
+        return appSpecificMappings.resolve(bundleIdentifier: frontmostBundleIdentifierProvider(),
+            button: button, trigger: trigger)
+    }
+
     func configuredAction(for button: RemoteButton, trigger: ButtonTrigger) -> ConfiguredButtonAction {
         configuredAction(for: button, trigger: trigger, profileID: selectedRemoteProfileID)
     }
 
     func configuredAction(for button: RemoteButton, trigger: ButtonTrigger,
                           profileID: UUID?) -> ConfiguredButtonAction {
-        (configuredActionOverride?(profileID, button, trigger)
+        let appAction = appMappingAction(for: button, trigger: trigger)
+        return (appAction ?? configuredActionOverride?(profileID, button, trigger)
             ?? configuredBaseAction(for: button, trigger: trigger, profileID: profileID))
             .normalizedForExecution
     }
@@ -3266,9 +3289,12 @@ final class AppSettings: ObservableObject {
             single: configuredAction(for: button, trigger: .singleClick, profileID: profileID),
             double: configuredAction(for: button, trigger: .doubleClick, profileID: profileID),
             long: configuredAction(for: button, trigger: .longPress, profileID: profileID),
-            hasOpaqueBinding: ButtonTrigger.allCases.contains(where: opaque),
+            hasOpaqueBinding: ButtonTrigger.allCases.contains {
+                appMappingAction(for: button, trigger: $0) == nil && opaque($0)
+            },
             repeatInterval: HIDRemoteTiming.repeatIntervalMilliseconds(for: button) ?? 100,
-            opaqueDouble: opaque(.doubleClick), opaqueLong: opaque(.longPress))
+            opaqueDouble: appMappingAction(for: button, trigger: .doubleClick) == nil && opaque(.doubleClick),
+            opaqueLong: appMappingAction(for: button, trigger: .longPress) == nil && opaque(.longPress))
         if snapshot.mode == .repeatSingle,
            interactionModeOverride?(profileID ?? selectedRemoteProfileID, button) == nil,
            timing.migratedRepeatButtons?.contains(button.rawValue) == true,

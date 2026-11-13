@@ -69,6 +69,8 @@ enum ApplicationInstanceGuard {
             }
     }
 
+    // Keep the historical lock shared even for isolated candidates. It prevents the
+    // installed app from acquiring HID after the candidate has already started.
     static func defaultLockURL(fileManager: FileManager = .default) -> URL? {
         fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
             .appendingPathComponent("RemoteMic", isDirectory: true)

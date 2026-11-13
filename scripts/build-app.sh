@@ -150,7 +150,9 @@ if [[ "$REQUIRE_RELEASE_BUILD_CHANNEL" == "1" && "$SAYALL_BUILD_CHANNEL" != "rel
   print -u2 "SAYALL_BUILD_CHANNEL=release is required for protected release builds"
   exit 1
 fi
-if [[ "$SAYALL_BUILD_CHANNEL" == "local" || "$SAYALL_BUILD_CHANNEL" == "release" ]]; then
+# The isolated public candidate has no diagnostics service or private account integration.
+if [[ "$SAYALL_BUILD_CHANNEL" == "release" || \
+      ( "$SAYALL_BUILD_CHANNEL" == "local" && "${SAYALL_ISOLATED_APP_MAPPING_TEST:-0}" != "1" ) ]]; then
   REQUIRE_DIAGNOSTIC_SERVICE=1
 fi
 if [[ "$REQUIRE_DIAGNOSTIC_SERVICE" == "1" && -z "$REMOTE_MIC_SENTRY_DSN" ]]; then
@@ -908,6 +910,20 @@ if [[ "$SAYALL_BUTTON_PROFILES_INCLUDED" == "true" &&
   ditto --norsrc --noextattr --noqtn --noacl \
     "$SAYALL_COMMON_PHRASES_RESOURCE_BUNDLE" \
     "$APP_DIR/Contents/Resources/SayAllCommonPhrases_SayAllCommonPhrases.bundle"
+fi
+# Independent local test identity: never install, launch, stop an existing app, or reuse its preferences.
+if [[ "${SAYALL_ISOLATED_APP_MAPPING_TEST:-0}" == "1" ]]; then
+  [[ "$SAYALL_PRIVATE_PLATFORM_MODE" == "public" ]] || { print -u2 "isolated app mapping tests require public mode"; exit 1; }
+  plutil -replace CFBundleIdentifier -string "com.kevin.sayall.app-switching-test" "$APP_DIR/Contents/Info.plist"
+  plutil -replace CFBundleDisplayName -string "SayAll · App Switching Test" "$APP_DIR/Contents/Info.plist"
+  plutil -replace SayAllIsolatedTestBuild -bool YES "$APP_DIR/Contents/Info.plist"
+  TEST_BUILD_NUMBER="${SAYALL_ISOLATED_APP_MAPPING_BUILD_NUMBER:-}"
+  [[ "$TEST_BUILD_NUMBER" =~ ^[0-9]+$ ]] || { print -u2 "isolated test build requires numeric build number"; exit 1; }
+  plutil -replace CFBundleVersion -string "$TEST_BUILD_NUMBER" "$APP_DIR/Contents/Info.plist"
+  plutil -replace SayAllSourceDirty -bool "$(git -C "$ROOT" diff --quiet && print NO || print YES)" "$APP_DIR/Contents/Info.plist"
+
+  plutil -replace SUEnableAutomaticChecks -bool NO "$APP_DIR/Contents/Info.plist"
+  plutil -remove SUFeedURL "$APP_DIR/Contents/Info.plist" 2>/dev/null || true
 fi
 SPARKLE_VERSION_DIR="$APP_DIR/Contents/Frameworks/Sparkle.framework/Versions/B"
 if [[ "$SIGNING_IDENTITY" != "-" ]]; then

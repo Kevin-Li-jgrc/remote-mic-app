@@ -1003,6 +1003,9 @@ final class BridgeAppModel: NSObject, ObservableObject, XiaomiBluetoothBridgeDel
         diagnosticLogUploader: DiagnosticLogUploader = .shared
     ) {
         self.settings = settings
+        settings.frontmostBundleIdentifierProvider = {
+            NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        }
         self.privateFeature = privateFeature
         self.macroFeature = macroFeature
         self.membershipFeature = membershipFeature
@@ -3636,7 +3639,7 @@ final class BridgeAppModel: NSObject, ObservableObject, XiaomiBluetoothBridgeDel
 
     private func buttonInteractionSnapshot(_ button: RemoteButton, profileID: UUID?) -> RemoteButtonInteractionSnapshot {
         settings.interactionSnapshot(for: button, profileID: profileID) { [self] trigger in
-            macroFeature.hasActiveBinding(profileID: profileID, button: button, trigger: trigger) &&
+            hasOpaqueButtonBinding(profileID: profileID, button: button, trigger: trigger) &&
                 settings.configuredActionOverride?(profileID, button, trigger) == nil
         }
     }
@@ -3772,7 +3775,7 @@ final class BridgeAppModel: NSObject, ObservableObject, XiaomiBluetoothBridgeDel
                 ) == true
             },
             hasOverrideBinding: { [weak self] profileID, button, trigger in
-                self?.macroFeature.hasActiveBinding(
+                self?.hasOpaqueButtonBinding(
                     profileID: profileID,
                     button: button,
                     trigger: trigger
@@ -5011,7 +5014,7 @@ final class BridgeAppModel: NSObject, ObservableObject, XiaomiBluetoothBridgeDel
             for: button,
             configured: configured,
             hasSecondaryAction: hasSecondaryAction,
-            hasSingleActionOverride: macroFeature.hasActiveBinding(
+            hasSingleActionOverride: hasOpaqueButtonBinding(
                 profileID: profileID,
                 button: button,
                 trigger: .singleClick
@@ -5053,7 +5056,7 @@ final class BridgeAppModel: NSObject, ObservableObject, XiaomiBluetoothBridgeDel
                           for: button,
                           profileID: profileID
                       ),
-                      hasSingleActionOverride: self.macroFeature.hasActiveBinding(
+                      hasSingleActionOverride: self.hasOpaqueButtonBinding(
                           profileID: profileID,
                           button: button,
                           trigger: .singleClick
@@ -5121,7 +5124,7 @@ final class BridgeAppModel: NSObject, ObservableObject, XiaomiBluetoothBridgeDel
     ) -> Bool {
         settings.hasSecondaryAction(for: button, profileID: profileID) ||
             [.doubleClick, .longPress].contains { trigger in
-                macroFeature.hasActiveBinding(
+                hasOpaqueButtonBinding(
                     profileID: profileID,
                     button: button,
                     trigger: trigger
@@ -7156,7 +7159,7 @@ final class BridgeAppModel: NSObject, ObservableObject, XiaomiBluetoothBridgeDel
         let recognizesDoubleClick = settings.configuredAction(
             for: button,
             trigger: .doubleClick
-        ).action != .disabled || macroFeature.hasActiveBinding(
+        ).action != .disabled || hasOpaqueButtonBinding(
             profileID: profileID,
             button: button,
             trigger: .doubleClick
@@ -7164,7 +7167,7 @@ final class BridgeAppModel: NSObject, ObservableObject, XiaomiBluetoothBridgeDel
         let recognizesLongPress = settings.configuredAction(
             for: button,
             trigger: .longPress
-        ).action != .disabled || macroFeature.hasActiveBinding(
+        ).action != .disabled || hasOpaqueButtonBinding(
             profileID: profileID,
             button: button,
             trigger: .longPress
@@ -7326,13 +7329,19 @@ final class BridgeAppModel: NSObject, ObservableObject, XiaomiBluetoothBridgeDel
         return true
     }
 
+    private func hasOpaqueButtonBinding(profileID: UUID?, button: RemoteButton, trigger: ButtonTrigger) -> Bool {
+        guard settings.appMappingAction(for: button, trigger: trigger) == nil else { return false }
+        return macroFeature.hasActiveBinding(profileID: profileID, button: button, trigger: trigger)
+    }
+
     private func performButtonProfileBoundAction(
         profileID: UUID?,
         button: RemoteButton,
         trigger: ButtonTrigger,
         source: String = "host_action"
     ) -> Bool {
-        let hasBinding = macroFeature.hasActiveBinding(
+        guard settings.appMappingAction(for: button, trigger: trigger) == nil else { return false }
+        let hasBinding = hasOpaqueButtonBinding(
             profileID: profileID,
             button: button,
             trigger: trigger

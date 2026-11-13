@@ -1447,3 +1447,23 @@
 "audio.mac_microphone.voice_hold" = "Hold to speak; release to finish";
 "audio.mac_microphone.voice_toggle" = "Press to start; press again to finish";
 "audio.mac_microphone.error.input_monitoring" = "Cannot observe the voice shortcut. Allow Input Monitoring in System Settings and retry.";
+
+// Public app-specific mappings
+"app_mapping.title" = "Automatic app button mappings";
+"app_mapping.enabled" = "Match Codex / DeepSeek automatically";
+"app_mapping.description" = "Matches only the frontmost app without reading chats. Other apps use base mappings. Turn off to restore all original mappings.";
+"app_mapping.current" = "Active mapping";
+"app_mapping.tv" = "While enabled, TV always sends plain Tab; TV double-click and long press do nothing.";
+"app_mapping.target" = "Edit app";
+"app_mapping.deepseek_pending" = "DeepSeek-specific shortcuts are unverified and initially disabled. Verify them on your keyboard before configuring here.";
+"app_mapping.unset" = "Not set (disabled)";
+"app_mapping.edit" = "Edit";
+"app_mapping.clear" = "Clear";
+"app_mapping.off" = "Off";
+"app_mapping.base" = "Base mappings";
+"app_mapping.common" = "Common controls: Enter, Esc, scrolling and volume. Home opens Codex in Codex mode and focuses the current input in DeepSeek mode. Voice settings are unchanged.";
+"app_mapping.slot.previous_chat" = "Left click · Previous chat";
+"app_mapping.slot.next_chat" = "Right click · Next chat";
+"app_mapping.slot.new_chat" = "Home hold · New chat";
+"app_mapping.slot.attention" = "Menu click · Chat needing attention";
+"app_mapping.slot.review" = "Menu hold · Code review";

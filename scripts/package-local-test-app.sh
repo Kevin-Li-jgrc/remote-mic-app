@@ -22,6 +22,37 @@ TARGET="${SAYALL_LOCAL_APP_TARGET:-$HOME/Applications/SayAll.app}"
 FALLBACK_DIR="${SAYALL_LOCAL_APP_FALLBACK:-$HOME/Downloads/SayAll-test}"
 STATE="$HOME/.sayall-local-build"
 
+# Public, isolated app-mapping candidate. Explicit user scope: package only, never stop/install/open.
+if [[ "${SAYALL_ISOLATED_APP_MAPPING_TEST:-0}" == "1" ]]; then
+  OUTPUT_ROOT="${SAYALL_ISOLATED_OUTPUT_DIR:-$HOME/Downloads/SayAll-AppSwitching-Test}"
+  mkdir -p "$OUTPUT_ROOT"
+  MAX_BUILD=0
+  for PLIST in "/Applications/SayAll.app/Contents/Info.plist" \
+      "$HOME/Applications/SayAll.app/Contents/Info.plist" "$HOST_ROOT/Resources/Info.plist"; do
+    [[ -f "$PLIST" ]] || continue
+    VALUE=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST" 2>/dev/null || echo 0)
+    if [[ "$VALUE" =~ ^[0-9]+$ ]] && (( VALUE > MAX_BUILD )); then MAX_BUILD=$VALUE; fi
+  done
+  for STATE_FILE in "$STATE" "$OUTPUT_ROOT/.build-number"; do
+    [[ -f "$STATE_FILE" ]] || continue
+    VALUE=$(cat "$STATE_FILE")
+    if [[ "$VALUE" =~ ^[0-9]+$ ]] && (( VALUE > MAX_BUILD )); then MAX_BUILD=$VALUE; fi
+  done
+  NEXT_BUILD=$(( MAX_BUILD + 1 ))
+  DESTINATION="$OUTPUT_ROOT/build-$NEXT_BUILD"
+  [[ ! -e "$DESTINATION" ]] || { print -u2 "isolated destination already exists"; exit 2; }
+  SAYALL_PRIVATE_PLATFORM_MODE=public SAYALL_BUILD_CHANNEL=local \
+    SAYALL_ISOLATED_APP_MAPPING_BUILD_NUMBER="$NEXT_BUILD" \
+    "$HOST_ROOT/scripts/build-app.sh"
+  mkdir "$DESTINATION"
+  ditto --norsrc --noextattr --noqtn --noacl "$HOST_ROOT/dist/SayAll.app" "$DESTINATION/SayAll.app"
+  codesign --verify --deep --strict "$DESTINATION/SayAll.app"
+  print "$NEXT_BUILD" > "$OUTPUT_ROOT/.build-number"
+  print "ISOLATED TEST APP: $DESTINATION/SayAll.app"
+  print "Not installed or launched; current SayAll and its settings are unchanged."
+  exit 0
+fi
+
 if [[ -z "$PRIVATE_ROOT" || ! -d "$PRIVATE_ROOT/packages/macos-button-profiles" ]]; then
   echo "SAYALL_PRIVATE_SOURCE_ROOT 必须指向私有仓根目录（含 packages/macos-button-profiles）" >&2
   exit 2

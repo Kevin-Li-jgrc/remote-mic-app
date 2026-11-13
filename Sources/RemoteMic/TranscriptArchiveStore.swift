@@ -343,7 +343,7 @@ final class TranscriptArchiveStore {
 
     private static func defaultRootDirectoryURL() -> URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("RemoteMic", isDirectory: true)
+            .appendingPathComponent(TestBuildIsolation.directoryName("RemoteMic"), isDirectory: true)
             .appendingPathComponent("Transcripts", isDirectory: true)
             .appendingPathComponent("v1", isDirectory: true)
     }

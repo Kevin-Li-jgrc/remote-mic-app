@@ -162,6 +162,19 @@ enum RemoteMicApp {
             }
             return
         }
+        // The test artifact must never contend with the installed app for Bluetooth/HID.
+        if TestBuildIsolation.preventsConcurrentRun(
+            isolated: TestBuildIsolation.isEnabled,
+            productionRunning: !NSRunningApplication.runningApplications(
+                withBundleIdentifier: ApplicationInstanceGuard.fallbackBundleIdentifier
+            ).isEmpty
+        ) {
+            let alert = NSAlert()
+            alert.messageText = "SayAll · App Switching Test"
+            alert.informativeText = "请先手动退出正式版无线麦，再启动测试版。测试版不会关闭或修改正式版。\nQuit the installed SayAll before testing. Its settings will not be changed."
+            alert.runModal()
+            return
+        }
         let bundleIdentifier = Bundle.main.bundleIdentifier
             ?? ApplicationInstanceGuard.fallbackBundleIdentifier
         let existingInstances = NSRunningApplication.runningApplications(

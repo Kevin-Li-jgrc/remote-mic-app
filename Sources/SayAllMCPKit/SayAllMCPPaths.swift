@@ -10,18 +10,31 @@ public struct SayAllMCPPaths: Sendable {
         self.accessRoot = accessRoot
     }
 
-    public static func defaults(fileManager: FileManager = .default) -> Self {
+    public static func defaults(
+        fileManager: FileManager = .default,
+        executableURL: URL = URL(fileURLWithPath: CommandLine.arguments[0])
+    ) -> Self {
         let applicationSupport = fileManager.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
+        // A standalone helper does not reliably inherit Bundle.main from its GUI host.
+        // Resolve only its own enclosing app, never another application's storage.
+        let enclosingApp = executableURL.resolvingSymlinksInPath()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let host = enclosingApp.pathExtension == "app" ? Bundle(url: enclosingApp) : nil
+        let isolated = [Bundle.main, host].compactMap { $0 }.contains { bundle in
+            bundle.bundleIdentifier == "com.kevin.sayall.app-switching-test" &&
+                bundle.object(forInfoDictionaryKey: "SayAllIsolatedTestBuild") as? Bool == true
+        }
+        let namespace = isolated ? "SayAllAppSwitchingTest/RemoteMic" : "RemoteMic"
         return Self(
             transcriptRoot: applicationSupport
-                .appendingPathComponent("RemoteMic", isDirectory: true)
+                .appendingPathComponent(namespace, isDirectory: true)
                 .appendingPathComponent("Transcripts", isDirectory: true)
                 .appendingPathComponent("v1", isDirectory: true),
             accessRoot: applicationSupport
-                .appendingPathComponent("RemoteMic", isDirectory: true)
+                .appendingPathComponent(namespace, isDirectory: true)
                 .appendingPathComponent("MCP", isDirectory: true)
                 .appendingPathComponent("v1", isDirectory: true)
         )

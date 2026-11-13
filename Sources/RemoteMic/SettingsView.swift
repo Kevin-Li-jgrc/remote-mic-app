@@ -4652,6 +4652,8 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         } content: {
+            AppSpecificMappingsView(settings: settings)
+
             if settings.customApplicationProfiles.isEmpty {
                 applicationEmptyPanel
             } else {

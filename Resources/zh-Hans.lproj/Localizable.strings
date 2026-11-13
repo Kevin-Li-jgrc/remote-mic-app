@@ -1446,3 +1446,23 @@
 "audio.mac_microphone.voice_hold" = "按住说话，松开结束";
 "audio.mac_microphone.voice_toggle" = "按一下开始，再按一下结束";
 "audio.mac_microphone.error.input_monitoring" = "无法监听语音快捷键。请在系统设置中允许输入监控后重试。";
+
+// Public app-specific mappings
+"app_mapping.title" = "按 App 自动切换按键";
+"app_mapping.enabled" = "启用 Codex / DeepSeek 自动匹配";
+"app_mapping.description" = "只识别当前前台 App，不读取聊天内容。未匹配的 App 使用基础映射；关闭后完全回到原映射。";
+"app_mapping.current" = "当前生效";
+"app_mapping.tv" = "启用时，TV 单击始终为 Tab；TV 双击和长按不执行动作。";
+"app_mapping.target" = "编辑应用";
+"app_mapping.deepseek_pending" = "DeepSeek 专属快捷键尚未确认，初始不执行动作。请先用电脑键盘验证，再在这里设置。";
+"app_mapping.unset" = "未设置（不执行）";
+"app_mapping.edit" = "设置";
+"app_mapping.clear" = "清除";
+"app_mapping.off" = "已关闭";
+"app_mapping.base" = "基础映射";
+"app_mapping.common" = "通用按键：确定 Enter、返回 Esc、上下滚动、音量加减。Codex 主页唤起 Codex；DeepSeek 主页聚焦当前输入框。语音触发保持原设置。";
+"app_mapping.slot.previous_chat" = "左键单击 · 上一个会话";
+"app_mapping.slot.next_chat" = "右键单击 · 下一个会话";
+"app_mapping.slot.new_chat" = "主页长按 · 新建会话";
+"app_mapping.slot.attention" = "菜单单击 · 待处理会话";
+"app_mapping.slot.review" = "菜单长按 · 代码审查";
