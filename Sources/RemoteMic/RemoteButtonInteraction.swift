@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// This controller accepts ordinary remote buttons only. Voice session edges never enter it.
@@ -7,6 +8,7 @@ final class RemoteButtonInteractionController {
         let snapshot: RemoteButtonInteractionSnapshot
         let valid: () -> Bool
         let perform: (ButtonTrigger, ConfiguredButtonAction) -> Bool
+        let pointerBaseline: UInt64?
         var pressed = true
         var second = false
         var waiting = false
@@ -15,19 +17,33 @@ final class RemoteButtonInteractionController {
         var timer: HIDRemoteScheduledTask?
         var longTimer: HIDRemoteScheduledTask?
         var guardTimer: HIDRemoteScheduledTask?
-        init(snapshot: RemoteButtonInteractionSnapshot, valid: @escaping () -> Bool,
+        init(snapshot: RemoteButtonInteractionSnapshot, pointerBaseline: UInt64?, valid: @escaping () -> Bool,
              perform: @escaping (ButtonTrigger, ConfiguredButtonAction) -> Bool) {
             self.snapshot = snapshot
+            self.pointerBaseline = pointerBaseline
             self.valid = valid
             self.perform = perform
         }
     }
 
     private let scheduler: HIDRemoteScheduling
+    private let pointerInputCount: () -> UInt64
     private var interactions: [RemoteButton: Interaction] = [:]
 
-    init(scheduler: HIDRemoteScheduling = DispatchHIDRemoteScheduler()) {
+    init(scheduler: HIDRemoteScheduling = DispatchHIDRemoteScheduler(),
+         pointerInputCount: @escaping () -> UInt64 = RemoteButtonInteractionController.currentPointerInputCount) {
         self.scheduler = scheduler
+        self.pointerInputCount = pointerInputCount
+    }
+
+    private static func currentPointerInputCount() -> UInt64 {
+        let types: [CGEventType] = [.mouseMoved, .leftMouseDragged, .rightMouseDragged,
+                                  .otherMouseDragged, .leftMouseDown, .rightMouseDown, .otherMouseDown]
+        return types.reduce(0) { $0 &+ UInt64(CGEventSource.counterForEventType(.hidSystemState, eventType: $1)) }
+    }
+
+    private func pointerChanged(_ interaction: Interaction) -> Bool {
+        interaction.pointerBaseline.map { $0 != pointerInputCount() } ?? false
     }
 
     func isTracking(_ button: RemoteButton) -> Bool { interactions[button] != nil }
@@ -46,7 +62,12 @@ final class RemoteButtonInteractionController {
             scheduleLong(button, current)
             return
         }
-        let current = Interaction(snapshot: snapshot(), valid: valid, perform: perform)
+        let captured = snapshot()
+        let repeated = captured.mode == .repeatSingle ? captured.single :
+            (captured.mode == .repeatLong ? captured.long : .disabled)
+        let isLineScroll = repeated.action == .scrollUp || repeated.action == .scrollDown
+        let current = Interaction(snapshot: captured,
+            pointerBaseline: isLineScroll ? pointerInputCount() : nil, valid: valid, perform: perform)
         interactions[button] = current
         guard current.snapshot.unavailableReason == nil, valid() else {
             current.consumed = true
@@ -54,8 +75,9 @@ final class RemoteButtonInteractionController {
             return
         }
         current.guardTimer = scheduler.schedule(afterMilliseconds: 100, repeatingEveryMilliseconds: 100) { [weak self, weak current] in
-            guard let self, let current, !current.valid() else { return }
-            self.cancel(button, reason: "context_changed")
+            guard let self, let current else { return }
+            if !current.valid() { self.cancel(button, reason: "context_changed") }
+            else if self.pointerChanged(current) { self.cancel(button, reason: "pointer_input") }
         }
         let mode = current.snapshot.mode!
         if mode == .repeatSingle {
@@ -123,6 +145,7 @@ final class RemoteButtonInteractionController {
         guard interactions[button] === current, current.valid() else {
             cancel(button, reason: "context_changed"); return
         }
+        if pointerChanged(current) { cancel(button, reason: "pointer_input"); return }
         let action = trigger == .singleClick ? current.snapshot.single :
             (trigger == .doubleClick ? current.snapshot.double : current.snapshot.long)
         current.consumed = true

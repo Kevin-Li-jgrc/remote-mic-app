@@ -617,8 +617,8 @@ struct RemoteButtonsTests {
         #expect(posted == 3)
     }
 
-    @Test func lineScrollIsAddressedToTheCapturedProcessWithoutHardwareModifiers() {
-        var destinations: [pid_t] = []
+    @Test func lineScrollUsesTheWorkingHIDPathWithTargetChecks() {
+        var destinations: [CGEventTapLocation] = []
         var lines: [Int64] = []
         var flags: [CGEventFlags] = []
         var locations: [CGPoint] = []
@@ -633,7 +633,7 @@ struct RemoteButtonsTests {
                 locations.append(event.location)
             }, logger: { _ in })
         #expect(handled)
-        #expect(destinations == [4242])
+        #expect(destinations == [.cghidEventTap])
         #expect(lines == [-3])
         #expect(flags == [[]])
         #expect(locations == [CGPoint(x: 500, y: 500)])

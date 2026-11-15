@@ -580,4 +580,4 @@
 
 - [ ] Fork：Codex / DeepSeek 前台 App 自动匹配（公开独立实现，TV 单击 Tab、长按 Esc）。核心路由和隔离测试包已实现；返回键单击退格、按住连删。Build 273 的 Codex 主键位、Build 274 的返回/TV 手势已获用户实测；菜单双击切换并聚焦已实现，新构建的 DeepSeek、首次语音和前后台切换验收待完成；DeepSeek 专属快捷键由用户先验证后设置。见 `Testing/AppSpecificMappings.md`。
 
-- [ ] Fork：修复按住上下滚动干扰鼠标与 Command+Tab。已改为目标进程投递、Command 取消并保留 HID 按住边沿，自动化通过；真实鼠标/应用切换及稳定回归待用户验收。见 `Bugs/2026-11-15-held-scroll-interferes-with-app-switching.md`。
+- [ ] Fork：修复按住上下滚动干扰鼠标与 Command+Tab。Build 276 的目标进程投递已被用户实测否决（Codex 上下均不滚动）；当前恢复已测 wheel 路径，鼠标介入/Command 时结束本次行滚动，保留 HID 边沿；自动化通过，真实滚动/鼠标/切换回归待用户验收。见 `Bugs/2026-11-15-held-scroll-interferes-with-app-switching.md`。

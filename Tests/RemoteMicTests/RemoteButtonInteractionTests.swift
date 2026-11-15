@@ -200,7 +200,7 @@ struct RemoteButtonInteractionTests {
         let controller = RemoteButtonInteractionController(scheduler: clock)
         let config = snapshot(.repeatSingle, single: .scrollDown)
         var modifiers: CGEventFlags = []
-        var postedTo: [pid_t] = []
+        var postedTo: [CGEventTapLocation] = []
         func edge(_ phase: RemoteButtonPhase) {
             controller.handle(phase, button: .down, snapshot: config, valid: { true }) { _, action in
                 KeyboardInjector.send(action.action, accessibilityTrusted: { true },
@@ -214,7 +214,7 @@ struct RemoteButtonInteractionTests {
         }
         edge(.press)
         clock.advance(400)
-        #expect(postedTo == [4242, 4242])
+        #expect(postedTo == [.cghidEventTap, .cghidEventTap])
         modifiers = .maskCommand
         clock.advance(500)
         let count = postedTo.count
@@ -227,7 +227,40 @@ struct RemoteButtonInteractionTests {
         #expect(postedTo.count == count)
         edge(.press)
         edge(.release)
-        #expect(postedTo == [4242, 4242, 4242])
+        #expect(postedTo == [.cghidEventTap, .cghidEventTap, .cghidEventTap])
+    }
+
+    @Test(arguments: [ButtonAction.scrollUp, .scrollDown, .deleteBackward, .volumeDown])
+    func pointerInputCancelsOnlyTheCurrentHeldLineScroll(_ action: ButtonAction) {
+        let clock = InteractionClock()
+        var pointerCount: UInt64 = 0
+        let controller = RemoteButtonInteractionController(scheduler: clock, pointerInputCount: { pointerCount })
+        let config = snapshot(.repeatSingle, single: action)
+        var count = 0
+        func edge(_ phase: RemoteButtonPhase) {
+            controller.handle(phase, button: .down, snapshot: config, valid: { true }) { _, _ in
+                count += 1; return true
+            }
+        }
+        edge(.press)
+        clock.advance(400)
+        #expect(count == 2)
+        pointerCount = 1
+        clock.advance(500)
+        if action == .scrollUp || action == .scrollDown {
+            #expect(count == 2)
+            #expect(!controller.isTracking(.down))
+            clock.advance(1500)
+            #expect(count == 2)
+            edge(.release)
+            edge(.press)
+            edge(.release)
+            #expect(count == 3)
+        } else {
+            #expect(count == 3)
+            #expect(controller.isTracking(.down))
+            edge(.release)
+        }
     }
 
     @Test func doubleWindowStartsAtReleaseAndUsesCapturedTiming() {

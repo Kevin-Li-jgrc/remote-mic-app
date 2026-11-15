@@ -2296,7 +2296,7 @@ enum KeyboardInjector {
         },
         currentProcessIdentifier: () -> pid_t? = { NSWorkspace.shared.frontmostApplication?.processIdentifier },
         modifiers: () -> CGEventFlags = { CGEventSource.flagsState(.combinedSessionState) },
-        eventPoster: (CGEvent, pid_t) -> Void = { event, pid in event.postToPid(pid) },
+        eventPoster: (CGEvent, CGEventTapLocation) -> Void = { event, tap in event.post(tap: tap) },
         logger: (String) -> Void = { AppLogger.shared.write($0) }
     ) -> Bool {
         func cancel(_ reason: String) -> Bool {
@@ -2309,7 +2309,7 @@ enum KeyboardInjector {
         guard let destination = target(), destination.processIdentifier > 0 else {
             return cancel("target_unavailable")
         }
-        guard let source = CGEventSource(stateID: .privateState),
+        guard let source = CGEventSource(stateID: .hidSystemState),
               let event = CGEvent(scrollWheelEvent2Source: source, units: .line,
                   wheelCount: 1, wheel1: lines, wheel2: 0, wheel3: 0)
         else { return cancel("event_unavailable") }
@@ -2322,9 +2322,9 @@ enum KeyboardInjector {
             return cancel("target_changed")
         }
         guard !modifiers().contains(.maskCommand) else { return cancel("command_modifier") }
-        // A process-addressed event stays out of the global pointer and Dock
-        // streams. Never fall back to posting this event at the HID tap.
-        eventPoster(event, destination.processIdentifier)
+        // Keep the WindowServer dispatch path used by the working line scroll.
+        // The hold controller yields to pointer input; Command cancels above.
+        eventPoster(event, .cghidEventTap)
         return true // Submission only; target-app scrolling remains externally observed.
     }
 
