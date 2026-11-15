@@ -4,6 +4,88 @@ import Testing
 @testable import RemoteMic
 
 struct DeepSeekSessionNavigationTests {
+    @Test func creationStaysInCapturedWorkspaceAndWaitsForNewSelection() {
+        var time = 0.0
+        var starts: [Int] = []
+        var checks = 0
+        let result = DeepSeekSessionNavigation.runCreation(surface: .init(currentWorkspace: { 2 },
+            begin: { workspace in starts.append(workspace); return true },
+            confirmedSelection: { workspace in
+                checks += 1
+                return checks < 3 ? nil : .init(workspace: workspace, session: 0)
+            }), valid: { true }, now: { time }, wait: { time += 0.05 })
+        #expect(result == .selected(.init(workspace: 2, session: 0)))
+        #expect(starts == [2])
+        #expect(checks == 3)
+    }
+
+    @Test func creationCancelsIfCaptureChangesContextAndDoesNotRetryAnUnconfirmedCreate() {
+        var valid = true
+        var starts = 0
+        var surface = DeepSeekSessionNavigation.CreationSurface(currentWorkspace: { valid = false; return 1 },
+            begin: { _ in starts += 1; return true }, confirmedSelection: { _ in nil })
+        #expect(DeepSeekSessionNavigation.runCreation(surface: surface, valid: { valid }) == .cancelled)
+        #expect(starts == 0)
+        valid = true
+        surface.currentWorkspace = { 1 }
+        var time = 0.0
+        let result = DeepSeekSessionNavigation.runCreation(surface: surface, valid: { true },
+            now: { time }, wait: { time += 0.25 })
+        #expect(result == .failed("creation_unconfirmed"))
+        #expect(starts == 1)
+        surface.currentWorkspace = { nil }
+        #expect(DeepSeekSessionNavigation.runCreation(surface: surface, valid: { true }) == .failed("workspace_unavailable"))
+        #expect(starts == 1)
+        surface.currentWorkspace = { 1 }
+        surface.confirmedSelection = { _ in .init(workspace: 0, session: 0) }
+        time = 0
+        #expect(DeepSeekSessionNavigation.runCreation(surface: surface, valid: { true },
+            now: { time }, wait: { time += 0.25 }) == .failed("creation_unconfirmed"))
+    }
+
+    @Test func creationRevealsCollapsedSelectionBeforeChoosingWorkspace() {
+        var hidden = true
+        var reveals = 0
+        var starts: [Int] = []
+        var time = 0.0
+        let surface = DeepSeekSessionNavigation.CreationSurface(
+            currentWorkspace: { hidden ? nil : 3 },
+            begin: { starts.append($0); return true },
+            confirmedSelection: { .init(workspace: $0, session: 0) },
+            revealCurrentWorkspace: { reveals += 1; hidden = false; return true })
+        let result = DeepSeekSessionNavigation.runCreation(surface: surface, valid: { true },
+            now: { time }, wait: { time += 0.05 })
+        #expect(result == .selected(.init(workspace: 3, session: 0)))
+        #expect(reveals == 1)
+        #expect(starts == [3])
+    }
+
+    @Test func creationFocusRequiresConfirmationAndDoesNotUseNavigation() throws {
+        let action = try #require(ButtonAction(rawValue: "newDeepSeekSession"))
+        var callback: ((pid_t) -> Void)?
+        var focused = 0
+        var current = "com.deepseek.dsh"
+        let handled = KeyboardInjector.send(action,
+            applicationURL: { _ in URL(fileURLWithPath: "/Applications/Example.app") },
+            applicationFocuser: { _, app, pid, _ in
+                #expect(app == .deepSeekHarness)
+                #expect(pid == 4242)
+                focused += 1
+            }, frontmostApplication: { (current, 4242) },
+            sessionNavigator: { _, _ in Issue.record("Creation must not navigate") },
+            sessionCreator: { callback = $0 }, accessibilityTrusted: { true })
+        #expect(handled)
+        #expect(focused == 0)
+        let confirm = try #require(callback)
+        confirm(4242)
+        #expect(focused == 1)
+        current = "com.apple.finder"
+        confirm(4242)
+        #expect(focused == 1)
+        #expect(!action.allowsRepeat)
+        #expect(!KeyboardInjector.send(action, sessionCreator: { _ in Issue.record("No permission") }, accessibilityTrusted: { false }))
+    }
+
     @Test func navigationFocusWaitsForConfirmedSelectionAndRequiresTheSameApp() throws {
         let action = try #require(ButtonAction(rawValue: "nextDeepSeekSession"))
         var callback: ((pid_t) -> Void)?

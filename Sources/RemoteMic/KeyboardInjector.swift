@@ -21,6 +21,7 @@ enum KeyboardInjector {
     typealias CmuxCommandRunner = (URL, [String], TimeInterval) -> CmuxCommandResult
     typealias KeyPoster = (CGKeyCode, CGEventFlags) -> Void
     typealias KeyStatePoster = (CGKeyCode, Bool, CGEventFlags) -> Bool
+    typealias SessionCreator = (@escaping (pid_t) -> Void) -> Void
     typealias SessionNavigator = (DeepSeekSessionDirection, @escaping (pid_t) -> Void) -> Void
     typealias ScrollPoster = (Int32) -> Bool
     typealias SystemKeyPoster = (Int32) -> Void
@@ -305,6 +306,7 @@ enum KeyboardInjector {
         customApplicationFocuser: @escaping CustomApplicationFocuser = focusCustomApplication,
         frontmostComposerFocuser: (@escaping (Bool) -> Void) -> Bool = focusFrontmostComposer,
         sessionNavigator: SessionNavigator = DeepSeekSessionNavigation.request,
+        sessionCreator: SessionCreator = DeepSeekSessionNavigation.requestCreation,
         accessibilityTrusted: () -> Bool = { isAccessibilityTrusted },
         keyPoster: KeyPoster = { postKey(code: $0, flags: $1) },
         keyStatePoster: KeyStatePoster = postKeyState,
@@ -349,19 +351,21 @@ enum KeyboardInjector {
             )
             return true
         }
-        if let direction = action.deepSeekSessionDirection {
+        if action.deepSeekSessionDirection != nil || action == .newDeepSeekSession {
             guard accessibilityTrusted() else { return false }
             guard frontmostApplication()?.bundleIdentifier == AppMappingTarget.deepSeek.bundleIdentifier,
                   let url = applicationURL(AppMappingTarget.deepSeek.bundleIdentifier) else {
                 logger("SESSION NAV phase=completed result=ignored reason=target_unavailable")
                 return true
             }
-            sessionNavigator(direction) { pid in
+            let focus: (pid_t) -> Void = { pid in
                 guard let current = frontmostApplication(), current.processIdentifier == pid,
                       current.bundleIdentifier == AppMappingTarget.deepSeek.bundleIdentifier else { return }
                 let requestID = focusRequests.begin()
                 applicationFocuser(url, .deepSeekHarness, pid, requestID)
             }
+            if let direction = action.deepSeekSessionDirection { sessionNavigator(direction, focus) }
+            else { sessionCreator(focus) }
             return true // The navigator observes selection; acceptance is not final success.
         }
         if action == .focusInput {
@@ -487,7 +491,7 @@ enum KeyboardInjector {
                     eventPoster: shortcutEventPoster
                 )
             }
-        case .focusInput, .previousDeepSeekSession, .nextDeepSeekSession:
+        case .focusInput, .previousDeepSeekSession, .nextDeepSeekSession, .newDeepSeekSession:
             break
         case .openCustomApplication:
             break

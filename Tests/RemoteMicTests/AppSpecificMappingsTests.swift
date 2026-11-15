@@ -63,7 +63,7 @@ struct AppSpecificMappingsTests {
     @Test func deepSeekUnknownShortcutsAreDisabledAndEditable() {
         var mappings = AppSpecificMappings()
         mappings.enabled = true
-        for slot in [AppMappingSlot.newChat, .attention, .review] {
+        for slot in [AppMappingSlot.attention, .review] {
             #expect(mappings.resolve(bundleIdentifier: "com.deepseek.dsh", button: slot.button,
                 trigger: slot.trigger)?.action == .disabled)
         }
@@ -73,6 +73,18 @@ struct AppSpecificMappingsTests {
             trigger: .singleClick)?.shortcut?.modifierFlags == .command)
         #expect(mappings.resolve(bundleIdentifier: "com.openai.codex", button: .right,
             trigger: .singleClick)?.shortcut?.modifierFlags == [.command, .option])
+    }
+
+    @Test func deepSeekHomeHoldCreatesInCurrentWorkspaceWithoutOverwritingSettings() {
+        var mappings = AppSpecificMappings()
+        mappings.enabled = true
+        #expect(mappings.resolve(bundleIdentifier: "com.deepseek.dsh", button: .home, trigger: .longPress)?.action.rawValue == "newDeepSeekSession")
+        #expect(mappings.resolve(bundleIdentifier: "com.deepseek.dsh", button: .home, trigger: .singleClick)?.action == .focusInput)
+        #expect(mappings.resolve(bundleIdentifier: "com.openai.codex", button: .home, trigger: .longPress)?.shortcut?.keyCode == 45)
+        mappings.setShortcut(.init(keyCode: 45, modifierFlags: .command, keyLabel: "N"), target: .deepSeek, slot: .newChat)
+        #expect(mappings.resolve(bundleIdentifier: "com.deepseek.dsh", button: .home, trigger: .longPress)?.action == .customShortcut)
+        mappings.setShortcut(nil, target: .deepSeek, slot: .newChat)
+        #expect(mappings.resolve(bundleIdentifier: "com.deepseek.dsh", button: .home, trigger: .longPress)?.action == .disabled)
     }
 
     @Test func deepSeekSessionNavigationDefaultsRespectCustomAndDisabledSlots() {

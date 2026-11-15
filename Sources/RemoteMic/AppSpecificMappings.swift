@@ -61,6 +61,7 @@ struct AppSpecificMappings: Codable, Equatable {
         if target == .deepSeek, !disabledSlots.contains("\(target.rawValue).\(slot.rawValue)") {
             if slot == .previousChat { return .init(action: .previousDeepSeekSession, shortcut: nil) }
             if slot == .nextChat { return .init(action: .nextDeepSeekSession, shortcut: nil) }
+            if slot == .newChat { return .init(action: .newDeepSeekSession, shortcut: nil) }
         }
         return .disabled
     }

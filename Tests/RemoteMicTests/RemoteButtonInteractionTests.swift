@@ -63,6 +63,39 @@ struct RemoteButtonInteractionTests {
         #expect(settings.interactionSnapshot(for: .back).mode == .once)
     }
 
+    @Test func deepSeekHomeHoldCreatesOnceAndReleaseDoesNotFocusOrCreateAgain() throws {
+        let name = "DeepSeekHome.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        settings.customMappingEnabled = true
+        settings.appSpecificMappings.enabled = true
+        settings.frontmostBundleIdentifierProvider = { "com.deepseek.dsh" }
+        settings.setHoldMode(.repeatLong, for: .home)
+        let saved = defaults.persistentDomain(forName: name) as NSDictionary?
+        let config = settings.interactionSnapshot(for: .home)
+        let clock = InteractionClock()
+        let controller = RemoteButtonInteractionController(scheduler: clock)
+        var actions: [ButtonAction] = []
+        func edge(_ phase: RemoteButtonPhase) {
+            controller.handle(phase, button: .home, snapshot: config, valid: { true }) { _, action in
+                actions.append(action.action); return true
+            }
+        }
+        edge(.press)
+        clock.advance(3000)
+        edge(.release)
+        clock.advance(4000)
+        #expect(actions == [.newDeepSeekSession])
+        actions.removeAll()
+        edge(.press)
+        clock.advance(4050)
+        edge(.release)
+        clock.advance(4500)
+        #expect(actions == [.focusInput])
+        #expect(defaults.persistentDomain(forName: name) as NSDictionary? == saved)
+    }
+
     @Test func automaticTvHoldSendsOnlyOneEscapeAndShortClickStillSendsTab() throws {
         let name = "AppTvEscape.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: name))

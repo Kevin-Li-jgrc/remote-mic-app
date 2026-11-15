@@ -68,6 +68,7 @@ struct AppSpecificMappingsView: View {
     private func bindingName(_ slot: AppMappingSlot) -> String {
         let binding = settings.appSpecificMappings.binding(target: target, slot: slot)
         if let shortcut = binding.shortcut { return shortcut.displayName(using: localization) }
+        if binding.action == .newDeepSeekSession { return localization.text("app_mapping.new_workspace_session") }
         if binding.action.deepSeekSessionDirection != nil { return localization.text("app_mapping.sidebar_navigation") }
         return localization.text("app_mapping.unset")
     }

@@ -1454,7 +1454,7 @@
 "app_mapping.current" = "当前生效";
 "app_mapping.tv" = "启用时，TV 单击为 Tab，长按发送一次 Esc；双击不执行动作。";
 "app_mapping.target" = "编辑应用";
-"app_mapping.deepseek_pending" = "左右键默认按侧边栏顺序跨工作区切换 Session，并聚焦输入框；首尾停住。其他专属快捷键可在验证后设置。";
+"app_mapping.deepseek_pending" = "左右键默认按侧边栏顺序跨工作区切换 Session，并聚焦输入框；首尾停住。主页长按在当前工作区新建 Session；其他专属快捷键可在验证后设置。";
 "app_mapping.unset" = "未设置（不执行）";
 "app_mapping.edit" = "设置";
 "app_mapping.clear" = "清除";
@@ -1473,3 +1473,6 @@
 "action.previous_deepseek_session" = "DeepSeek 上一个 Session";
 "action.next_deepseek_session" = "DeepSeek 下一个 Session";
 "app_mapping.sidebar_navigation" = "侧边栏导航";
+
+"action.new_deepseek_session" = "DeepSeek 当前工作区新建 Session";
+"app_mapping.new_workspace_session" = "当前工作区新建 Session";

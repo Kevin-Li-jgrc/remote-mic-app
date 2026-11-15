@@ -905,6 +905,7 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
     case focusInput
     case previousDeepSeekSession
     case nextDeepSeekSession
+    case newDeepSeekSession
     case openCustomApplication
     case toggleLongRecording
     case openCommonPhrases
@@ -970,6 +971,7 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
         case .focusInput: return localization.text("action.focus_input")
         case .previousDeepSeekSession: return localization.text("action.previous_deepseek_session")
         case .nextDeepSeekSession: return localization.text("action.next_deepseek_session")
+        case .newDeepSeekSession: return localization.text("action.new_deepseek_session")
         case .openCustomApplication: return localization.text("action.open_custom_application")
         case .openCommonPhrases: return localization.text("action.open_common_phrases")
         case .toggleLongRecording: return localization.text("action.toggle_long_recording")
@@ -1113,7 +1115,7 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
             return .combinations
         case .openCommonPhrases:
             return .commonPhrases
-        case .openCustomApplication, .previousDeepSeekSession, .nextDeepSeekSession:
+        case .openCustomApplication, .previousDeepSeekSession, .nextDeepSeekSession, .newDeepSeekSession:
             return .applications
         case .openRemoteMic, .openCodex, .openDeepSeekHarness, .openWorkBuddy, .openClaude, .openCmux, .openWeChat, .openCursor,
              .openXcode, .openSlack, .openWeCom, .openNeteaseMusic, .openChrome, .openSafari,
@@ -1128,6 +1130,7 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
             .focusInput,
             .previousDeepSeekSession,
             .nextDeepSeekSession,
+            .newDeepSeekSession,
             // 到边缘是一次性跳转，按住连发没有意义（PRODUCT_SPEC）。
             .scrollToTop,
             .scrollToBottom,
@@ -1178,7 +1181,7 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
             ) else {
                 return action == current
             }
-            if action.deepSeekSessionDirection != nil {
+            if action.deepSeekSessionDirection != nil || action == .newDeepSeekSession {
                 return installedBundleIdentifiers.contains(AppMappingTarget.deepSeek.bundleIdentifier) || action == current
             }
             guard let application = action.presetApplication else { return true }
