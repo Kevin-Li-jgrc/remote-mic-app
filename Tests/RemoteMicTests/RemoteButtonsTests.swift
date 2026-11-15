@@ -550,7 +550,7 @@ struct RemoteButtonsTests {
             .scrollUp,
             accessibilityTrusted: { true },
             keyPoster: { posted.append(($0, $1)) },
-            scrollPoster: { scrolled.append($0) }
+            scrollPoster: { scrolled.append($0); return true }
         ))
         // 按上键看到更早的消息：正的行数把内容滚回对话开头。
         #expect(scrolled == [KeyboardInjector.scrollLineCount])
@@ -561,7 +561,7 @@ struct RemoteButtonsTests {
             .scrollDown,
             accessibilityTrusted: { true },
             keyPoster: { posted.append(($0, $1)) },
-            scrollPoster: { scrolled.append($0) }
+            scrollPoster: { scrolled.append($0); return true }
         ))
         #expect(scrolled == [-KeyboardInjector.scrollLineCount])
         #expect(posted.isEmpty)
@@ -570,9 +570,96 @@ struct RemoteButtonsTests {
         #expect(!KeyboardInjector.send(
             .scrollUp,
             accessibilityTrusted: { false },
-            scrollPoster: { scrolled.append($0) }
+            scrollPoster: { scrolled.append($0); return true }
         ))
         #expect(scrolled.isEmpty)
+    }
+
+    @Test(arguments: [RemoteButton.up, .down])
+    func cancelledLineScrollPreservesHIDPermissionsAndHeldEdges(_ button: RemoteButton) throws {
+        let name = "ScrollCancellation.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let settings = AppSettings(defaults: defaults)
+        settings.customMappingEnabled = true
+        settings.setAction(button == .up ? .scrollUp : .scrollDown, for: button)
+        settings.setHoldMode(.repeatSingle, for: button)
+        let scheduler = RemoteButtonsTestScheduler()
+        var command = false
+        var posted = 0
+        let monitor = HIDRemoteMonitor(settings: settings, profileID: settings.selectedRemoteProfileID,
+            ownsEventSuppressor: false, scheduler: scheduler, runtimePermissions: { true },
+            actionPerformer: { _, _, configured in
+                KeyboardInjector.send(configured.action, accessibilityTrusted: { true }, scrollPoster: { lines in
+                    KeyboardInjector.submitLineScroll(lines: lines,
+                        target: { (4242, CGRect(x: 0, y: 0, width: 800, height: 600)) },
+                        currentProcessIdentifier: { 4242 }, modifiers: { command ? .maskCommand : [] },
+                        eventPoster: { _, _ in posted += 1 }, logger: { _ in })
+                })
+            }, frontmostBundleIdentifier: { "com.openai.codex" })
+        _ = monitor.connectSimulatedDevice(fingerprint: "scroll-cancellation", profileID: settings.selectedRemoteProfileID)
+        let report = Data([button == .up ? 0x52 : 0x51, 0, 0, 0, 0, 0])
+        let release = Data(repeating: 0, count: 6)
+        monitor.handleSimulatedReport(reportID: 1, data: report)
+        scheduler.advance(toMilliseconds: 400)
+        #expect(posted == 2)
+        command = true
+        scheduler.advance(toMilliseconds: 500)
+        #expect(monitor.status != LocalizedMessage("button_mapping.permission.accessibility_expired"))
+        command = false
+        monitor.handleSimulatedReport(reportID: 1, data: report)
+        scheduler.advance(toMilliseconds: 1000)
+        #expect(posted == 2)
+        monitor.handleSimulatedReport(reportID: 1, data: release)
+        scheduler.advance(toMilliseconds: 1700)
+        monitor.handleSimulatedReport(reportID: 1, data: report)
+        monitor.handleSimulatedReport(reportID: 1, data: release)
+        #expect(posted == 3)
+    }
+
+    @Test func lineScrollIsAddressedToTheCapturedProcessWithoutHardwareModifiers() {
+        var destinations: [pid_t] = []
+        var lines: [Int64] = []
+        var flags: [CGEventFlags] = []
+        var locations: [CGPoint] = []
+        let handled = KeyboardInjector.submitLineScroll(lines: -3,
+            target: { (processIdentifier: 4242, windowFrame: CGRect(x: 100, y: 200, width: 800, height: 600)) },
+            currentProcessIdentifier: { 4242 },
+            modifiers: { [.maskShift, .maskAlternate] },
+            eventPoster: { event, pid in
+                destinations.append(pid)
+                lines.append(event.getIntegerValueField(.scrollWheelEventDeltaAxis1))
+                flags.append(event.flags)
+                locations.append(event.location)
+            }, logger: { _ in })
+        #expect(handled)
+        #expect(destinations == [4242])
+        #expect(lines == [-3])
+        #expect(flags == [[]])
+        #expect(locations == [CGPoint(x: 500, y: 500)])
+    }
+
+    @Test func lineScrollCannotReachTheAppSwitcherOrAReplacedTarget() {
+        var posted = 0
+        var logs: [String] = []
+        let target: () -> (processIdentifier: pid_t, windowFrame: CGRect?)? = {
+            (4242, CGRect(x: 0, y: 0, width: 800, height: 600))
+        }
+        #expect(!KeyboardInjector.submitLineScroll(lines: -3,
+            target: target, currentProcessIdentifier: { 4242 }, modifiers: { .maskCommand },
+            eventPoster: { _, _ in posted += 1 }, logger: { logs.append($0) }))
+        #expect(posted == 0)
+        #expect(logs.contains { $0.contains("reason=command_modifier") })
+        #expect(!KeyboardInjector.submitLineScroll(lines: -3,
+            target: target, currentProcessIdentifier: { 4243 }, modifiers: { [] },
+            eventPoster: { _, _ in posted += 1 }, logger: { logs.append($0) }))
+        #expect(posted == 0)
+        #expect(logs.contains { $0.contains("reason=target_changed") })
+        #expect(!KeyboardInjector.submitLineScroll(lines: -3,
+            target: { nil }, currentProcessIdentifier: { nil }, modifiers: { [] },
+            eventPoster: { _, _ in posted += 1 }, logger: { logs.append($0) }))
+        #expect(posted == 0)
+        #expect(logs.contains { $0.contains("reason=target_unavailable") })
     }
 
     @Test func scrollEventsAimAtTheFrontmostWindowAndFallBackToTheCursor() {

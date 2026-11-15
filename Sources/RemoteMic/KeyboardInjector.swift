@@ -21,7 +21,7 @@ enum KeyboardInjector {
     typealias CmuxCommandRunner = (URL, [String], TimeInterval) -> CmuxCommandResult
     typealias KeyPoster = (CGKeyCode, CGEventFlags) -> Void
     typealias KeyStatePoster = (CGKeyCode, Bool, CGEventFlags) -> Bool
-    typealias ScrollPoster = (Int32) -> Void
+    typealias ScrollPoster = (Int32) -> Bool
     typealias SystemKeyPoster = (Int32) -> Void
 
     struct ApplicationVisibilitySnapshot: Equatable {
@@ -306,7 +306,7 @@ enum KeyboardInjector {
         accessibilityTrusted: () -> Bool = { isAccessibilityTrusted },
         keyPoster: KeyPoster = { postKey(code: $0, flags: $1) },
         keyStatePoster: KeyStatePoster = postKeyState,
-        scrollPoster: ScrollPoster = { postScrollWheel(lines: $0) },
+        scrollPoster: ScrollPoster = { submitLineScroll(lines: $0) },
         scrollPagePoster: (ScrollPageDirection) -> ScrollPageOutcome = defaultScrollPagePoster,
         scrollEdgePoster: (ScrollEdge) -> ScrollPageOutcome = defaultScrollEdgePoster,
         systemKeyPoster: SystemKeyPoster = postSystemKey,
@@ -427,9 +427,9 @@ enum KeyboardInjector {
         case .arrowRight:
             keyPoster(124, [])
         case .scrollUp:
-            scrollPoster(scrollLineCount)
+            return scrollPoster(scrollLineCount)
         case .scrollDown:
-            scrollPoster(-scrollLineCount)
+            return scrollPoster(-scrollLineCount)
         case .pageUp:
             return scrollPagePoster(.up).wasHandled
         case .pageDown:
@@ -2262,11 +2262,7 @@ enum KeyboardInjector {
         )
     }
 
-    private static func frontmostWindowFrame() -> CGRect? {
-        guard let processIdentifier = NSWorkspace.shared
-            .frontmostApplication?
-            .processIdentifier
-        else { return nil }
+    private static func frontmostWindowFrame(processIdentifier: pid_t) -> CGRect? {
         let application = AXUIElementCreateApplication(processIdentifier)
         if let window = axAttribute(application, attribute: kAXFocusedWindowAttribute),
            CFGetTypeID(window) == AXUIElementGetTypeID(),
@@ -2291,23 +2287,45 @@ enum KeyboardInjector {
 
     /// Positive `lines` scrolls the content toward the beginning of the
     /// conversation, so the up key shows earlier messages.
-    private static func postScrollWheel(lines: Int32) {
-        guard let source = CGEventSource(stateID: .hidSystemState),
-              let event = CGEvent(
-                  scrollWheelEvent2Source: source,
-                  units: .line,
-                  wheelCount: 1,
-                  wheel1: lines,
-                  wheel2: 0,
-                  wheel3: 0
-              )
-        else { return }
+    static func submitLineScroll(
+        lines: Int32,
+        target: () -> (processIdentifier: pid_t, windowFrame: CGRect?)? = {
+            NSWorkspace.shared.frontmostApplication.map {
+                ($0.processIdentifier, frontmostWindowFrame(processIdentifier: $0.processIdentifier))
+            }
+        },
+        currentProcessIdentifier: () -> pid_t? = { NSWorkspace.shared.frontmostApplication?.processIdentifier },
+        modifiers: () -> CGEventFlags = { CGEventSource.flagsState(.combinedSessionState) },
+        eventPoster: (CGEvent, pid_t) -> Void = { event, pid in event.postToPid(pid) },
+        logger: (String) -> Void = { AppLogger.shared.write($0) }
+    ) -> Bool {
+        func cancel(_ reason: String) -> Bool {
+            logger("SCROLL LINE phase=cancelled reason=\(reason) external_result=unknown")
+            return false
+        }
+        // Command-Tab has not activated its destination yet. Stop the held scroll
+        // at this boundary instead of waiting for a frontmost-app notification.
+        guard !modifiers().contains(.maskCommand) else { return cancel("command_modifier") }
+        guard let destination = target(), destination.processIdentifier > 0 else {
+            return cancel("target_unavailable")
+        }
+        guard let source = CGEventSource(stateID: .privateState),
+              let event = CGEvent(scrollWheelEvent2Source: source, units: .line,
+                  wheelCount: 1, wheel1: lines, wheel2: 0, wheel3: 0)
+        else { return cancel("event_unavailable") }
         event.location = scrollTargetLocation(
-            windowFrame: frontmostWindowFrame(),
-            mouseLocation: currentMouseLocation()
-        )
+            windowFrame: destination.windowFrame,
+            mouseLocation: currentMouseLocation())
+        event.flags = []
         event.setIntegerValueField(.eventSourceUserData, value: syntheticEventMarker)
-        event.post(tap: .cghidEventTap)
+        guard currentProcessIdentifier() == destination.processIdentifier else {
+            return cancel("target_changed")
+        }
+        guard !modifiers().contains(.maskCommand) else { return cancel("command_modifier") }
+        // A process-addressed event stays out of the global pointer and Dock
+        // streams. Never fall back to posting this event at the HID tap.
+        eventPoster(event, destination.processIdentifier)
+        return true // Submission only; target-app scrolling remains externally observed.
     }
 
     private static func postSystemKey(type: Int32) {

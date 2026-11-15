@@ -195,6 +195,41 @@ struct RemoteButtonInteractionTests {
         #expect(actions.first?.shortcut?.modifierFlags == [.control, .shift])
     }
 
+    @Test func commandTabInterruptsScrollRepeatsBeforeTheFrontmostAppChanges() {
+        let clock = InteractionClock()
+        let controller = RemoteButtonInteractionController(scheduler: clock)
+        let config = snapshot(.repeatSingle, single: .scrollDown)
+        var modifiers: CGEventFlags = []
+        var postedTo: [pid_t] = []
+        func edge(_ phase: RemoteButtonPhase) {
+            controller.handle(phase, button: .down, snapshot: config, valid: { true }) { _, action in
+                KeyboardInjector.send(action.action, accessibilityTrusted: { true },
+                    scrollPoster: { lines in
+                        KeyboardInjector.submitLineScroll(lines: lines,
+                            target: { (4242, CGRect(x: 0, y: 0, width: 800, height: 600)) },
+                            currentProcessIdentifier: { 4242 }, modifiers: { modifiers },
+                            eventPoster: { _, pid in postedTo.append(pid) }, logger: { _ in })
+                    })
+            }
+        }
+        edge(.press)
+        clock.advance(400)
+        #expect(postedTo == [4242, 4242])
+        modifiers = .maskCommand
+        clock.advance(500)
+        let count = postedTo.count
+        #expect(count == 2)
+        #expect(!controller.isTracking(.down))
+        modifiers = []
+        clock.advance(2000)
+        #expect(postedTo.count == count)
+        edge(.release)
+        #expect(postedTo.count == count)
+        edge(.press)
+        edge(.release)
+        #expect(postedTo == [4242, 4242, 4242])
+    }
+
     @Test func doubleWindowStartsAtReleaseAndUsesCapturedTiming() {
         let clock = InteractionClock()
         let controller = RemoteButtonInteractionController(scheduler: clock)

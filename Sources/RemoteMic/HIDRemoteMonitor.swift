@@ -1603,6 +1603,15 @@ final class HIDRemoteMonitor {
             return true
         }
         guard actionPerformer(button, trigger, configured) else {
+            if configured.action == .scrollUp || configured.action == .scrollDown {
+                // A target change or Command-Tab cancels scrolling without revoking
+                // permissions. Retain the physical edge until release so duplicate
+                // held reports cannot restart the cancelled gesture.
+                diagnosticLogger("HID ACTION cancelled button=\(button.rawValue) " +
+                    "trigger=\(trigger.rawValue) action=\(configured.action.rawValue) " +
+                    "reason=scroll_not_submitted")
+                return false
+            }
             diagnosticLogger(
                 "HID ACTION failed button=\(button.rawValue) trigger=\(trigger.rawValue) " +
                     "action=\(configured.action.rawValue)"
