@@ -1454,7 +1454,7 @@
 "app_mapping.current" = "当前生效";
 "app_mapping.tv" = "启用时，TV 单击为 Tab，长按发送一次 Esc；双击不执行动作。";
 "app_mapping.target" = "编辑应用";
-"app_mapping.deepseek_pending" = "DeepSeek 专属快捷键尚未确认，初始不执行动作。请先用电脑键盘验证，再在这里设置。";
+"app_mapping.deepseek_pending" = "左右键默认按侧边栏顺序跨工作区切换 Session，并聚焦输入框；首尾停住。其他专属快捷键可在验证后设置。";
 "app_mapping.unset" = "未设置（不执行）";
 "app_mapping.edit" = "设置";
 "app_mapping.clear" = "清除";
@@ -1469,3 +1469,7 @@
 
 "action.open_deepseek_harness" = "打开 DeepSeek Harness";
 "app_mapping.switch" = "菜单双击在 Codex 与 DeepSeek 之间切换并聚焦输入框；其他 App 中双击打开 DeepSeek。";
+
+"action.previous_deepseek_session" = "DeepSeek 上一个 Session";
+"action.next_deepseek_session" = "DeepSeek 下一个 Session";
+"app_mapping.sidebar_navigation" = "侧边栏导航";

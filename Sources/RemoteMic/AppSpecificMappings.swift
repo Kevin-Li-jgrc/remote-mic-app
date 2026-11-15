@@ -54,6 +54,17 @@ struct AppSpecificMappings: Codable, Equatable {
         }
     }
 
+    func binding(target: AppMappingTarget, slot: AppMappingSlot) -> ConfiguredButtonAction {
+        if let shortcut = shortcut(target: target, slot: slot) {
+            return .init(action: .customShortcut, shortcut: shortcut)
+        }
+        if target == .deepSeek, !disabledSlots.contains("\(target.rawValue).\(slot.rawValue)") {
+            if slot == .previousChat { return .init(action: .previousDeepSeekSession, shortcut: nil) }
+            if slot == .nextChat { return .init(action: .nextDeepSeekSession, shortcut: nil) }
+        }
+        return .disabled
+    }
+
     mutating func setShortcut(_ shortcut: CustomKeyboardShortcut?, target: AppMappingTarget, slot: AppMappingSlot) {
         let key = "\(target.rawValue).\(slot.rawValue)"
         shortcuts[key] = shortcut
@@ -83,10 +94,7 @@ struct AppSpecificMappings: Codable, Equatable {
             return nil
         }
         if let slot = AppMappingSlot.allCases.first(where: { $0.button == button && $0.trigger == trigger }) {
-            guard let key = shortcut(target: target, slot: slot) else {
-                return ConfiguredButtonAction(action: .disabled, shortcut: nil)
-            }
-            return ConfiguredButtonAction(action: .customShortcut, shortcut: key)
+            return binding(target: target, slot: slot)
         }
         guard trigger == .singleClick else { return ConfiguredButtonAction(action: .disabled, shortcut: nil) }
         let action: ButtonAction

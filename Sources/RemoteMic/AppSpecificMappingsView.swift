@@ -35,8 +35,7 @@ struct AppSpecificMappingsView: View {
                 HStack(spacing: 12) {
                     Text(localization.text(slot.titleKey)).font(.system(size: 13))
                     Spacer()
-                    Text(settings.appSpecificMappings.shortcut(target: target, slot: slot)
-                        .map { $0.displayName(using: localization) } ?? localization.text("app_mapping.unset"))
+                    Text(bindingName(slot))
                         .font(.system(size: 13, weight: .medium))
                     Button("app_mapping.edit") { editingSlot = editingSlot == slot ? nil : slot }
                     Button("app_mapping.clear") {
@@ -64,6 +63,13 @@ struct AppSpecificMappingsView: View {
         .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didActivateApplicationNotification)) { _ in
             currentBundleIdentifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         }
+    }
+
+    private func bindingName(_ slot: AppMappingSlot) -> String {
+        let binding = settings.appSpecificMappings.binding(target: target, slot: slot)
+        if let shortcut = binding.shortcut { return shortcut.displayName(using: localization) }
+        if binding.action.deepSeekSessionDirection != nil { return localization.text("app_mapping.sidebar_navigation") }
+        return localization.text("app_mapping.unset")
     }
 
     private var currentTargetName: String {

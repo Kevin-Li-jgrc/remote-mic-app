@@ -903,6 +903,8 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
     case customShortcut
     case combinationAction
     case focusInput
+    case previousDeepSeekSession
+    case nextDeepSeekSession
     case openCustomApplication
     case toggleLongRecording
     case openCommonPhrases
@@ -966,6 +968,8 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
         case .combinationAction: return localization.text("action.combination_action")
         case .customShortcut: return localization.text("action.custom_shortcut")
         case .focusInput: return localization.text("action.focus_input")
+        case .previousDeepSeekSession: return localization.text("action.previous_deepseek_session")
+        case .nextDeepSeekSession: return localization.text("action.next_deepseek_session")
         case .openCustomApplication: return localization.text("action.open_custom_application")
         case .openCommonPhrases: return localization.text("action.open_common_phrases")
         case .toggleLongRecording: return localization.text("action.toggle_long_recording")
@@ -1058,6 +1062,14 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
         }
     }
 
+    var deepSeekSessionDirection: DeepSeekSessionDirection? {
+        switch self {
+        case .previousDeepSeekSession: return .previous
+        case .nextDeepSeekSession: return .next
+        default: return nil
+        }
+    }
+
     var presetApplication: PresetApplication? {
         switch self {
         case .openRemoteMic: return .remoteMic
@@ -1101,7 +1113,7 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
             return .combinations
         case .openCommonPhrases:
             return .commonPhrases
-        case .openCustomApplication:
+        case .openCustomApplication, .previousDeepSeekSession, .nextDeepSeekSession:
             return .applications
         case .openRemoteMic, .openCodex, .openDeepSeekHarness, .openWorkBuddy, .openClaude, .openCmux, .openWeChat, .openCursor,
              .openXcode, .openSlack, .openWeCom, .openNeteaseMusic, .openChrome, .openSafari,
@@ -1114,6 +1126,8 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
         ![
             .customShortcut,
             .focusInput,
+            .previousDeepSeekSession,
+            .nextDeepSeekSession,
             // 到边缘是一次性跳转，按住连发没有意义（PRODUCT_SPEC）。
             .scrollToTop,
             .scrollToBottom,
@@ -1163,6 +1177,9 @@ enum ButtonAction: String, CaseIterable, Codable, Identifiable {
                 experimentalContinuousRecordingEnabled: experimentalContinuousRecordingEnabled
             ) else {
                 return action == current
+            }
+            if action.deepSeekSessionDirection != nil {
+                return installedBundleIdentifiers.contains(AppMappingTarget.deepSeek.bundleIdentifier) || action == current
             }
             guard let application = action.presetApplication else { return true }
             return installedBundleIdentifiers.contains(application.bundleIdentifier) || action == current

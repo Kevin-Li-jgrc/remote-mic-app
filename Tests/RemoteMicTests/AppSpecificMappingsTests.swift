@@ -63,7 +63,7 @@ struct AppSpecificMappingsTests {
     @Test func deepSeekUnknownShortcutsAreDisabledAndEditable() {
         var mappings = AppSpecificMappings()
         mappings.enabled = true
-        for slot in AppMappingSlot.allCases {
+        for slot in [AppMappingSlot.newChat, .attention, .review] {
             #expect(mappings.resolve(bundleIdentifier: "com.deepseek.dsh", button: slot.button,
                 trigger: slot.trigger)?.action == .disabled)
         }
@@ -73,6 +73,18 @@ struct AppSpecificMappingsTests {
             trigger: .singleClick)?.shortcut?.modifierFlags == .command)
         #expect(mappings.resolve(bundleIdentifier: "com.openai.codex", button: .right,
             trigger: .singleClick)?.shortcut?.modifierFlags == [.command, .option])
+    }
+
+    @Test func deepSeekSessionNavigationDefaultsRespectCustomAndDisabledSlots() {
+        var mappings = AppSpecificMappings()
+        mappings.enabled = true
+        #expect(mappings.resolve(bundleIdentifier: "com.deepseek.dsh", button: .left, trigger: .singleClick)?.action.rawValue == "previousDeepSeekSession")
+        #expect(mappings.resolve(bundleIdentifier: "com.deepseek.dsh", button: .right, trigger: .singleClick)?.action.rawValue == "nextDeepSeekSession")
+        mappings.setShortcut(.init(keyCode: 124, modifierFlags: .command, keyLabel: "Right"), target: .deepSeek, slot: .nextChat)
+        #expect(mappings.resolve(bundleIdentifier: "com.deepseek.dsh", button: .right, trigger: .singleClick)?.action == .customShortcut)
+        mappings.setShortcut(nil, target: .deepSeek, slot: .previousChat)
+        #expect(mappings.resolve(bundleIdentifier: "com.deepseek.dsh", button: .left, trigger: .singleClick)?.action == .disabled)
+        #expect(mappings.resolve(bundleIdentifier: "com.openai.codex", button: .left, trigger: .singleClick)?.shortcut?.keyCode == 123)
     }
 
     @Test func commonActionsAndSecondaryGesturesDoNotLeakOldBindings() {
@@ -100,7 +112,7 @@ struct AppSpecificMappingsTests {
         let baseData = defaults.data(forKey: "buttonBindings")
         settings.appSpecificMappings.enabled = true
         settings.frontmostBundleIdentifierProvider = { "com.deepseek.dsh" }
-        #expect(settings.configuredAction(for: .left, trigger: .singleClick).action == .disabled)
+        #expect(settings.configuredAction(for: .left, trigger: .singleClick).action.rawValue == "previousDeepSeekSession")
         settings.frontmostBundleIdentifierProvider = { "com.openai.codex" }
         #expect(settings.configuredAction(for: .left, trigger: .singleClick).shortcut?.keyCode == 123)
         settings.frontmostBundleIdentifierProvider = { "com.apple.Safari" }
